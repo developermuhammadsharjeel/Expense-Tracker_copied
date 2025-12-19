@@ -1,8 +1,13 @@
 import 'dart:math';
 
 import 'package:expense_repository/expense_repository.dart';
+import 'package:expenses_tracker/screens/add_loan/blocs/create_loan_bloc/create_loan_bloc.dart';
+import 'package:expenses_tracker/screens/add_loan/blocs/get_loans_bloc/get_loans_bloc.dart';
+import 'package:expenses_tracker/screens/add_loan/blocs/get_loans_bloc/get_loans_event.dart';
+import 'package:expenses_tracker/screens/add_loan/views/loan_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class MainScreen extends StatelessWidget {
@@ -229,6 +234,95 @@ class MainScreen extends StatelessWidget {
                     ),
                   )
                 ],
+              ),
+            ),
+            // Loan Tracking Section
+            const SizedBox(
+              height: 20,
+            ),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider(
+                          create: (context) =>
+                              CreateLoanBloc(FirebaseExpenseRepo()),
+                        ),
+                        BlocProvider(
+                          create: (context) =>
+                              GetLoansBloc(FirebaseExpenseRepo())
+                                ..add(GetLoans()),
+                        ),
+                      ],
+                      child: const LoanListScreen(),
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 4,
+                      color: Colors.grey.shade300,
+                      offset: const Offset(2, 2),
+                    )
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.money_dollar_circle,
+                            color: Colors.blue,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Loan Tracking",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Track loans given & received",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ],
+                ),
               ),
             ),
             // Transiction row
