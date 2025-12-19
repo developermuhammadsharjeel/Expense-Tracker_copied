@@ -268,10 +268,21 @@ class _AddLoanState extends State<AddLoan> {
                                 return;
                               }
 
+                              // Validate amount is a valid number
+                              final parsedAmount = int.tryParse(amountController.text);
+                              if (parsedAmount == null || parsedAmount <= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please enter a valid amount'),
+                                  ),
+                                );
+                                return;
+                              }
+
                               setState(() {
                                 loan.type = selectedType;
                                 loan.personName = personNameController.text;
-                                loan.amount = int.parse(amountController.text);
+                                loan.amount = parsedAmount;
                                 loan.isDraft = isDraft;
                                 loan.description = descriptionController.text.isEmpty
                                     ? null

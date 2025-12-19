@@ -5,6 +5,7 @@ import 'package:expenses_tracker/screens/add_loan/blocs/create_loan_bloc/create_
 import 'package:expenses_tracker/screens/add_loan/blocs/get_loans_bloc/get_loans_bloc.dart';
 import 'package:expenses_tracker/screens/add_loan/blocs/get_loans_bloc/get_loans_event.dart';
 import 'package:expenses_tracker/screens/add_loan/views/loan_list.dart';
+import 'package:expenses_tracker/screens/home/blocs/get_expenses_bloc/get_expenses_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -30,7 +31,9 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _loadLoans() async {
     try {
-      final repo = FirebaseExpenseRepo();
+      // Get repository from the existing GetExpensesBloc context
+      final expensesBloc = context.read<GetExpensesBloc>();
+      final repo = expensesBloc.expenseRepository;
       final loadedLoans = await repo.getLoans();
       setState(() {
         loans = loadedLoans;
@@ -299,19 +302,18 @@ class _MainScreenState extends State<MainScreen> {
             ),
             GestureDetector(
               onTap: () async {
+                final repo = context.read<GetExpensesBloc>().expenseRepository;
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => MultiBlocProvider(
                       providers: [
                         BlocProvider(
-                          create: (context) =>
-                              CreateLoanBloc(FirebaseExpenseRepo()),
+                          create: (context) => CreateLoanBloc(repo),
                         ),
                         BlocProvider(
                           create: (context) =>
-                              GetLoansBloc(FirebaseExpenseRepo())
-                                ..add(GetLoans()),
+                              GetLoansBloc(repo)..add(GetLoans()),
                         ),
                       ],
                       child: const LoanListScreen(),

@@ -23,11 +23,12 @@ class LoanListScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          final repo = context.read<GetLoansBloc>().expenseRepository;
           var newLoan = await Navigator.push(
             context,
             MaterialPageRoute<Loan>(
               builder: (context) => BlocProvider(
-                create: (context) => CreateLoanBloc(FirebaseExpenseRepo()),
+                create: (context) => CreateLoanBloc(repo),
                 child: const AddLoan(),
               ),
             ),
