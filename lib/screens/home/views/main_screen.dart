@@ -1,13 +1,47 @@
 import 'dart:math';
 
 import 'package:expense_repository/expense_repository.dart';
+import 'package:expenses_tracker/screens/add_loan/blocs/create_loan_bloc/create_loan_bloc.dart';
+import 'package:expenses_tracker/screens/add_loan/blocs/get_loans_bloc/get_loans_bloc.dart';
+import 'package:expenses_tracker/screens/add_loan/blocs/get_loans_bloc/get_loans_event.dart';
+import 'package:expenses_tracker/screens/add_loan/views/loan_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   final List<Expense> expenses;
   const MainScreen(this.expenses, {super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  List<Loan> loans = [];
+  bool loansLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLoans();
+  }
+
+  Future<void> _loadLoans() async {
+    try {
+      final repo = FirebaseExpenseRepo();
+      final loadedLoans = await repo.getLoans();
+      setState(() {
+        loans = loadedLoans;
+        loansLoaded = true;
+      });
+    } catch (e) {
+      setState(() {
+        loansLoaded = true;
+      });
+    }
+  }
 
   // to show total expenses balance
   double _calculateTotalExpenses(List<Expense> expenses) {
@@ -18,9 +52,26 @@ class MainScreen extends StatelessWidget {
     return total;
   }
 
+  // Calculate loan impact on balance (only saved loans)
+  double _calculateLoanImpact(List<Loan> loans) {
+    double impact = 0;
+    for (var loan in loans) {
+      if (!loan.isDraft) {
+        if (loan.type == LoanType.received) {
+          impact += loan.amount;
+        } else {
+          impact -= loan.amount;
+        }
+      }
+    }
+    return impact;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final totalExpenses = _calculateTotalExpenses(expenses);
+    final totalExpenses = _calculateTotalExpenses(widget.expenses);
+    final loanImpact = _calculateLoanImpact(loans);
+    final adjustedBalance = totalExpenses + loanImpact;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 10.0),
@@ -108,7 +159,7 @@ class MainScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Total Balacnce",
+                    "Total Balance",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -119,13 +170,24 @@ class MainScreen extends StatelessWidget {
                     height: 12,
                   ),
                   Text(
-                    '\$${totalExpenses.toStringAsFixed(2)}',
+                    '\$${adjustedBalance.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
+                  if (loanImpact != 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Loan Impact: ${loanImpact >= 0 ? '+' : ''}\$${loanImpact.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
                   const SizedBox(
                     height: 12,
                   ),
@@ -229,6 +291,97 @@ class MainScreen extends StatelessWidget {
                     ),
                   )
                 ],
+              ),
+            ),
+            // Loan Tracking Section
+            const SizedBox(
+              height: 20,
+            ),
+            GestureDetector(
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MultiBlocProvider(
+                      providers: [
+                        BlocProvider(
+                          create: (context) =>
+                              CreateLoanBloc(FirebaseExpenseRepo()),
+                        ),
+                        BlocProvider(
+                          create: (context) =>
+                              GetLoansBloc(FirebaseExpenseRepo())
+                                ..add(GetLoans()),
+                        ),
+                      ],
+                      child: const LoanListScreen(),
+                    ),
+                  ),
+                );
+                // Reload loans when returning
+                _loadLoans();
+              },
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 4,
+                      color: Colors.grey.shade300,
+                      offset: const Offset(2, 2),
+                    )
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.money_dollar_circle,
+                            color: Colors.blue,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Loan Tracking",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Track loans given & received",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ],
+                ),
               ),
             ),
             // Transiction row

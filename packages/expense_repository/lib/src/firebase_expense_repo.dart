@@ -7,6 +7,7 @@ class FirebaseExpenseRepo implements ExpenseRepository {
   final categoryColllecion =
       FirebaseFirestore.instance.collection('categories');
   final expenseCollection = FirebaseFirestore.instance.collection('expenses');
+  final loanCollection = FirebaseFirestore.instance.collection('loans');
   @override
   Future<void> createCategory(Category category) async {
     try {
@@ -50,6 +51,42 @@ class FirebaseExpenseRepo implements ExpenseRepository {
       return await expenseCollection.get().then((value) => value.docs
           .map((e) => Expense.fromEntity(ExpenseEntity.fromDocument(e.data())))
           .toList());
+    } catch (e) {
+      log(e.toString());
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> createLoan(Loan loan) async {
+    try {
+      await loanCollection
+          .doc(loan.loanId)
+          .set(loan.toEntity().toDocument());
+    } catch (e) {
+      log(e.toString());
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Loan>> getLoans() async {
+    try {
+      return await loanCollection.get().then((value) => value.docs
+          .map((e) => Loan.fromEntity(LoanEntity.fromDocument(e.data())))
+          .toList());
+    } catch (e) {
+      log(e.toString());
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> updateLoan(Loan loan) async {
+    try {
+      await loanCollection
+          .doc(loan.loanId)
+          .update(loan.toEntity().toDocument());
     } catch (e) {
       log(e.toString());
       rethrow;
