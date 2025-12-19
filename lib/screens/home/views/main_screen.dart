@@ -10,9 +10,38 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   final List<Expense> expenses;
   const MainScreen(this.expenses, {super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  List<Loan> loans = [];
+  bool loansLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLoans();
+  }
+
+  Future<void> _loadLoans() async {
+    try {
+      final repo = FirebaseExpenseRepo();
+      final loadedLoans = await repo.getLoans();
+      setState(() {
+        loans = loadedLoans;
+        loansLoaded = true;
+      });
+    } catch (e) {
+      setState(() {
+        loansLoaded = true;
+      });
+    }
+  }
 
   // to show total expenses balance
   double _calculateTotalExpenses(List<Expense> expenses) {
@@ -23,9 +52,26 @@ class MainScreen extends StatelessWidget {
     return total;
   }
 
+  // Calculate loan impact on balance (only saved loans)
+  double _calculateLoanImpact(List<Loan> loans) {
+    double impact = 0;
+    for (var loan in loans) {
+      if (!loan.isDraft) {
+        if (loan.type == LoanType.received) {
+          impact += loan.amount;
+        } else {
+          impact -= loan.amount;
+        }
+      }
+    }
+    return impact;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final totalExpenses = _calculateTotalExpenses(expenses);
+    final totalExpenses = _calculateTotalExpenses(widget.expenses);
+    final loanImpact = _calculateLoanImpact(loans);
+    final adjustedBalance = totalExpenses + loanImpact;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 10.0),
@@ -113,7 +159,7 @@ class MainScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Total Balacnce",
+                    "Total Balance",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -124,13 +170,24 @@ class MainScreen extends StatelessWidget {
                     height: 12,
                   ),
                   Text(
-                    '\$${totalExpenses.toStringAsFixed(2)}',
+                    '\$${adjustedBalance.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
+                  if (loanImpact != 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Loan Impact: ${loanImpact >= 0 ? '+' : ''}\$${loanImpact.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
                   const SizedBox(
                     height: 12,
                   ),
@@ -241,8 +298,8 @@ class MainScreen extends StatelessWidget {
               height: 20,
             ),
             GestureDetector(
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => MultiBlocProvider(
@@ -261,6 +318,8 @@ class MainScreen extends StatelessWidget {
                     ),
                   ),
                 );
+                // Reload loans when returning
+                _loadLoans();
               },
               child: Container(
                 width: MediaQuery.of(context).size.width,
